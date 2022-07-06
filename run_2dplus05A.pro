@@ -281,6 +281,4 @@ endfor
 ;;cgHistoPlot, radiation[where(zerocount GT 10), 5],/oplot,color='violet',binsize=binsize,/window
 ;cglegend, Titles =['Imax =' + string(imax), 'inew =' + string(nnew), 'nload =' + string(nload)]
 
-print,'Hello'
-
 end
