@@ -189,9 +189,9 @@ endif
   ;Isolate the faster particles
   
   highp1 =  ind[where(py[ind] GT 2*mean(abs(py[ind])))]
-  LowBz =   ind[where(abs(Bz[ind]) LT 1e-10, nlowBz)]
+  LowBz =   ind[where(abs(Bz[ind]) LT 1e-11, nlowBz)] ;this doesn't remember what had lobB
   
-  masklowbz[ind[[where(abs(Bz[ind]) LT 1e-10 and gam ne 0, nlowBz)]]] = 1
+  masklowbz[ind[[where(abs(Bz[ind]) LT 1e-11 and gam ne 0, nlowBz)]]] = 1
   ;highp[ind[where(py[ind] GT 3*mean(abs(py[ind])))]] = 1
   ;
   ;
@@ -207,7 +207,7 @@ endif
    match, highpleave_ind, LowBz,suba, subb ;see which particles that have had lowBw leave with highp
    if suba[0] ne -1 then lowbz_highpleave += n_elements(subb)
    
-   match,ind[indbad],LowBz,suba, subb
+   match,ind[indbad],where(masklowbz),suba, subb
    if (suba[0] ne -1) then begin
      ; print, 'High velocity particles', ind[indbad[suba]], 'have left at i=', i
      LowBleave+= n_elements(suba)
