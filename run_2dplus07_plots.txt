@@ -1,0 +1,429 @@
+; PLOTS FOR RUN_2DPLUS06.txt
+
+t = Temp_Str.t(0:Temp_Str.kTemp-1)
+TallT = Temp_Str.TturbAve(0:Temp_Str.kTemp-1)
+TparT = Temp_Str.TturbPar(0:Temp_Str.kTemp-1)
+TprpT = Temp_Str.TturbPerp(0:Temp_Str.kTemp-1)
+
+ns = 1
+
+plot, t, smooth(TallT,ns, /edge_t), yran = [0, 30.0]
+oplot, t, smooth(Tpart,ns, /edge_t), col=2
+oplot, t, smooth(TprpT,ns, /edge_t), col=254
+
+
+; ***** MAKE POSTSCRIPT *****
+pname = 'TemperatureProfile07'
+dir = '/Users/ree/Bob/papers/22_Daniel/plots'
+popen, pname, /port, dir=dir, xsize = 4, ysize=2
+
+!p.charsize=0.80
+ns = 1
+
+plot, t, smooth(TallT,ns, /edge_t), yran = [0, 25.0], xtit='Time (s)', $
+  ytit='Ion 2!Und!N Moments (keV)', Title='Test-Particle Simulation', $
+  xran = [0.0, 300.0]
+oplot, t, smooth(Tpart,ns, /edge_t), col=2
+oplot, t, smooth(TprpT,ns, /edge_t), col=254
+
+oplot, [100.0, 100.0], [0, 50],line=2
+
+!p.charsize=0.65
+
+xyouts, 200.0, 21.0, 'T!DPerp!N ~ 20 keV', col=254, align = 0.5
+xyouts, 200.0, 15.5, 'T!DPar!N ~ 14 keV', col=2, align = 0.5
+
+xyouts, 200.0, 9.0, 'Quasi Steady State', align = 0.5
+xyouts, 200.0, 6.5, 'Achieved After ~100 s', align = 0.5
+xyouts, 200.0, 4.0, 'T!DAve!N ~ 18 keV', align = 0.5
+xyouts, 200.0, 1.5, 'Inside of Turbulent Region', align = 0.5
+
+xyouts, 50.0, 9.0, 'Initial Load &', align = 0.5
+xyouts, 50.0, 6.5, 'Boundary', align = 0.5
+xyouts, 50.0, 4.0, 'Condition', align = 0.5
+xyouts, 50.0, 1.5, 'T = 4 keV', align = 0.5
+
+oplot, [0.0, 20.0], [4.0, 4.0]
+pclose
+!p.charsize=1.25
+
+
+
+
+
+
+; ***** PLOT ENERGY DISTRIBUTION *****
+
+fw   = (Dist_Str.fw > 0.5)
+fw   = fw/max(fw)
+WaxW = Dist_Str.Wax
+;WaxW = (dindgen(Wnpts) + 0.5D)*Wbin
+Tuse = 4.9d3
+
+PL1min = 20d3
+PL1max = 125D3
+indPL1 = where( (WaxW GE PL1min) AND (WaxW LE PL1max) )
+alpha1 = -1D
+C1    = 0.3D*(1D/PL1min)^alpha1
+
+PL2min = 200d3
+PL2max = 5000D3
+indPL2 = where( (WaxW GE PL2min) AND (WaxW LE PL2max) )
+alpha2 = -3.0D
+C2    = 0.025D*(1D/PL2min)^alpha2
+
+
+wi, 2
+plot, WaxW, fw*sqrt(WaxW/Tuse), /xlog, /ylog, psym=3
+oplot, WaxW, 2.2*exp(-WaxW/Tuse)*WaxW/Tuse, col=2
+oplot, WaxW(indPL1), C1*WaxW(indPL1)^alpha1, col=6, thick=1
+oplot, WaxW(indPL2), C2*WaxW(indPL2)^alpha2, col=6, thick=1
+
+wi,0
+
+
+; ***** MAKE LOG-SPACED DISTRIBUTIONS *****
+;print, WaxW(0:24)
+WmaxW = max(WaxW)
+isW   = 20 ; STA
+beta  = 1.05D
+nlog  = round( (alog10(WmaxW) - alog10(WaxW(isW)) ) / alog10(beta) ) + 1
+Wlog  = [WaxW(0:isW-1), WaxW(isW) * beta^(Dindgen(nlog))]
+nlogW = nlog + isW
+flog  = dblarr(nlogW)
+flog(0:isW-1) = fw(0:isW-1)
+
+; MAKE AVERAGE
+FOR i = isW, nlogW-1 do BEGIN & $
+  WS = sqrt(Wlog(i)*Wlog(i-1)) & $
+  WE = sqrt(Wlog(i)*Wlog((i+1)<(nlogW-1)) ) & $
+  indWl = where( (WaxW GE WS) AND (WaxW LE WE), nindWl) & $
+  if nindWl GT 0 then flog(i) = average(fw(indWl)) else flog(i)=0 & $
+ENDFOR
+
+wi, 2
+ree_sym, 0.5
+plot, WaxW, fw*sqrt(WaxW/Tuse), /xlog, /ylog, psym=3
+oplot, WaxW, 2.2*exp(-WaxW/Tuse)*WaxW/Tuse, col=2
+oplot, Wlog, flog*sqrt(Wlog/Tuse), col=4, psym=8
+oplot, WaxW(indPL1), C1*WaxW(indPL1)^alpha1, col=6, thick=1
+oplot, WaxW(indPL2), C2*WaxW(indPL2)^alpha2, col=6, thick=1
+wi,0
+
+; CALIBRATION TEST
+VaxW = sqrt(2D*WaxW*ee/mi)
+ftest = Dist_Str.fw*sqrt(WaxW/Tuse)/max(Dist_Str.fw)
+fWRec = ftest/VaxW
+dWtest = WaxW(1)-WaxW(0)
+Ntest = total(fWRec*dWtest) * 4D * !dpi * 1d-3 ; EV to KEV
+Nmeas = 0.03D6
+Cal = Nmeas/Ntest
+
+
+; ***** MAKE POSTSCRIPT *****
+pname = 'DistI_Simulation07'
+dir = '/Users/ree/Bob/papers/22_Daniel/plots'
+popen, pname, /port, dir=dir, xsize = 4, ysize=5
+
+!p.charsize=0.8
+
+indW = where(Wlog LE 500D3)
+Tuse = 6D3
+ree_sym, 0.25
+plot, Wlog(indW)*1e-3, Cal*flog(indW)*sqrt(Wlog(indW)/Tuse), psym=8, /xlog, /ylog, $
+  xtitle = 'Energy (keV)', ytitle = 'Flux (m!U2!N sr s keV)!U-1!N', yran=[3e3,3e8], $
+  xran = [5e-2, 2e3], /xstyle, /ystyle, title= 'Test_Particle Simulation';, $
+  ytickname = ['10!U4!D', '10!U5!D', '10!U6!D', '10!U7!D', '10!U8!D']
+indG = where(Wlog LE 40D3)
+oplot, Wlog(indG)*1e-3, 2.3*Cal*exp(-Wlog(indG)/Tuse)*Wlog(indG)/Tuse, col=2
+
+
+PL1min = 30D3
+PL1max = 80D3
+indPL1 = where( (Wlog GE PL1min) AND (Wlog LE PL1max) )
+alpha1 = -2.0D
+C1    = Cal*1D*(1D/PL1min)^alpha1
+
+PL2min = 140D3
+PL2max = 350D3
+indPL2 = where( (Wlog GE PL2min) AND (Wlog LE PL2max) )
+alpha2 = -3.9D
+C2    = Cal*0.050D*(1D/PL2min)^alpha2
+
+;oplot, Wlog(indPL1), C1*Wlog(indPL1)^alpha1, col=195, thick=7
+oplot, Wlog(indPL2)*1e-3, C2*Wlog(indPL2)^alpha2, col=195, thick=7
+;oplot, Earr(indH), exp(C(0) + alog(Earr(indH))*C(1)), col=195, thick=1
+oplot, Wlog(indW)*1e-3, Cal*flog(indW)*sqrt(Wlog(indW)/Tuse), psym=8
+;oplot, Enf(1:*), fiHC(1:*), col=6, psym=8
+
+
+skip = 1.5
+xyouts, 1e0, 1e7, 'Blue: 6 keV '
+xyouts, 1e0, 1e7/skip, 'Maxwellian'
+xyouts, 1e0, 1e7/skip/skip, '(Not a fit)'
+
+;xyouts, 1.5e2, 4e6, 'Shoulder'
+
+xyouts, 2e1, 0.7e6, 'Tail'
+xyouts, 2e1, 0.7e6/skip, 'Index: -3.9'
+xyouts, 2e1, 0.7e6/skip/skip, '(Not a fit)'
+
+xyouts, 2e-1, 2e4, 'Quasi Steady State'
+xyouts, 2e-1, 2e4/skip, 'Ion Flux In '
+xyouts, 2e-1, 2e4/skip/skip, 'Turbulent Region'
+
+pclose
+!p.charsize=1.25
+
+
+
+
+; ############### PLOT DENSITY ###############
+
+print, max(Den_Str.DenMap)/0.05
+Den = Den_Str.DenMap/5.5d6
+imlplot, Den, colmin=8, mag=3, zran=[0, 0.05]
+Denx = dblarr(320)
+for i = 0, 319 do denx(i) = average(Den(i,28:31))
+xax = ( (dindgen(320) + 0.5D)*Den_Str.dx + Box_Str.xmin )/RE
+
+pname = 'DensityVsX07'
+dir = '/Users/ree/Bob/papers/22_Daniel/plots'
+popen, pname, /port, dir=dir, xsize = 4, ysize=2
+
+!p.charsize=0.8
+
+plot, xax, Denx, xtit='X (R!DE!N)', ytit='Density (cm!U-3!N)', $
+  title='Test-Particle Simulation', xran = [-8, 8], /xstyle, yran = [0, 0.05]
+oplot, [Box_Str.xturbmin, Box_Str.xturbmin]/RE + 0.25, [0, 0.1], line=2, col=254
+oplot, [Box_Str.xturbmax, Box_Str.xturbmax]/RE - 0.25, [0, 0.1], line=2, col=254
+
+!p.charsize=0.65
+xyouts, 0, 0.042, 'Predicted Density in Turbulent Region', align=0.5
+xyouts, 0, 0.036, 'Z: -0.5 to 0.5 R!DE!N, Y: -1 to 1 R!DE!N', align=0.5
+
+xyouts, 0, 0.030, 'Density at X Boundaries (Z=0; Y=0) Set at 0.05 cm!U-3!N', align=0.5
+xyouts, 0, 0.004, 'Dashed Red Lines Bound Turbulence Region', align=0.5
+
+pclose
+!p.charsize=1.25
+
+
+
+
+
+
+
+
+
+
+
+Eamp = [   0.0,    0.1,    0.2,    0.3,    0.4,    0.5,    0.6,    0.7, $
+           0.8,    0.9,    1.0,    1.1,    1.2,    1.3,    1.4,    1.5, $
+           1.6,    1.7,    1.8,    1.9,    2.0]
+           
+
+TvsE = [7.4239, 7.7836, 8.3194, 8.9084, 10.046, 11.331, 11.776, 13.508, $
+        14.834, 16.419, 18.175, 18.654, 19.635, 20.889, 21.969, 23.279, $
+        23.701, 25.756, 25.833, 27.143, 26.967]
+        
+Tstd = [ 0.059,  0.079,  0.079,  0.167,  0.061,  0.124,  0.350,  0.177, $
+         0.220,  0.304,  0.259,  0.313,  0.314,  0.487,  0.355,  0.582, $
+         0.796,  0.435,  0.699,  0.574,  0.982]
+      
+plot, Eamp, Tstd, psym=8
+      
+      
+      
+      
+         
+; MAKE POSTSCRIPT
+pname = 'TempVsE06'
+dir = '/Users/ree/Bob/papers/22_Daniel/plots'
+popen, pname, /port, dir=dir, xsize = 4, ysize=2
+
+!p.charsize=0.8
+
+ree_sym, 0.3
+plot, Eamp, TvsE, xtit='dE Amplitude (1 = Nominal)', psym =8, $
+  ytit='Ion 2!Und!N Moment (keV)', xran = [-0.05, 2.05], /xstyle, $
+  title='Energization Versus dE Amplitude'
+
+errbars, Eamp, TvsE, erry=Tstd+0.1
+
+Quad = 7.6 + Eamp*Eamp*11D
+Lin = 8.0 + Eamp*9.9D
+oplot, Eamp(0:10), Quad(0:10), col=2, line = 2
+oplot, Eamp(10:*), Lin(10:*), col=4, line=2
+
+!p.charsize=0.65
+
+xyouts, 0.05, 17, 'Energization Quadratic', col=2
+xyouts, 0.05, 13.5, 'at Low dE', col=2
+
+xyouts, 1.3, 17, 'Energization Linear', col=4
+xyouts, 1.3, 13.5, 'at High dE', col=4
+
+pclose
+!p.charsize=1.25
+
+
+
+
+
+
+
+
+
+
+; ############### EXITING FLUXES ###############
+;  EXITING FLUXES
+beta = 1.2
+
+
+; MAX ENERGY AXIS
+WaxF = (dindgen(Flux_Str.Nflux) + 0.5D) * Flux_Str.dW
+
+; CHANGE TO LOG SPACING
+ree_v06_make_log_space, WaxF, Flux_Str.px, beta, Xlog=WaxLog, Ylog=fpxlog
+ree_v06_make_log_space, WaxF, Flux_Str.mx, beta, Xlog=WaxLog, Ylog=fmxlog
+ree_v06_make_log_space, WaxF, Flux_Str.py, beta, Xlog=WaxLog, Ylog=fpylog
+ree_v06_make_log_space, WaxF, Flux_Str.my, beta, Xlog=WaxLog, Ylog=fmylog
+ree_v06_make_log_space, WaxF, Flux_Str.pz, beta, Xlog=WaxLog, Ylog=fpzlog
+ree_v06_make_log_space, WaxF, Flux_Str.mz, beta, Xlog=WaxLog, Ylog=fmzlog
+
+; NORMALIZE
+AX = (Box_Str.yexitmax - Box_Str.yexitmin)*(Box_Str.zexitmax - Box_Str.zexitmin)
+AY = (Box_Str.xexitmax - Box_Str.xexitmin)*(Box_Str.zexitmax - Box_Str.zexitmin)
+AZ = (Box_Str.xexitmax - Box_Str.xexitmin)*(Box_Str.yexitmax - Box_Str.yexitmin)
+Fall = [fpxlog/Ax, fmxlog/AX, fpylog/Ay, fmylog/Ay, fpzlog/Az, fmzlog/Az]
+norm = max(Fall)*0.67
+
+yran = [5e-6, 10.0]
+
+xSep = sqrt(10D)*1e4
+symsize = 0.3
+Tuse = 4e3
+xticks = [1e2, 1e3, 1e4, 1e5]
+xtickname = ['10!U2!N', '10!U3!N', '10!U4!N', '10!U5!N']
+ytickname = ['10!U-5!N', '10!U-4!N', '10!U-3!N', '10!U-2!N', $
+                       '10!U-1!N', '10!U0!N', '10!U1!N']
+dyt = 1.5 ; TICK HIEGHT
+xlran = [100.0, 500e3]
+ynameloc  = 3e-6
+ypos  = 1e-5*[1,1]
+
+ree_sym, symsize
+
+; CHECK MAX VALUE OF X
+XvalH = ceil(alog10(max(WaxLog)))
+xran = 10.0^[floor(alog10(min(WaxLog)))-1, $
+              ceil(alog10(max(WaxLog))) + ceil(5.0*alog10(Xsep))]
+
+
+
+; MAKE POSTSCRIPT
+pname = 'FluxExit_E0p0_B0p0_07'
+dir = '/Users/ree/Bob/papers/22_Daniel/plots'
+popen, pname, /port, dir=dir, xsize = 6.5, ysize=2.5
+
+!p.charsize=0.8
+
+; PLOT
+plot, WaxLog(0:33), fpxlog(0:33)*Ax/norm, /xlog, /ylog, psym=-8, xran=xran, $
+  yran=yran, xstyle=5, ystyle=9, ytickname=ytickname, $
+  ytitle = 'Exiting Flux (normalized)', xtit='Energy (keV)' 
+  
+oplot, WaxLog(0:34)*xsep^0, fpxlog(0:34)/Ax/norm, psym=-8
+oplot, WaxLog(0:33)*xsep^1, fmxlog(0:33)/Ax/norm, psym=-8
+oplot, WaxLog(0:33)*xsep^2, fpylog(0:33)/Ay/norm, psym=-8
+oplot, WaxLog(0:23)*xsep^3, fmylog(0:23)/Ay/norm, psym=-8
+oplot, WaxLog(0:23)*xsep^4, fpzlog(0:23)/Az/norm, psym=-8
+oplot, WaxLog(0:23)*xsep^5, fmzlog(0:23)/Az/norm, psym=-8
+
+; EMPLOY CUTOFF
+ExpF = exp(-Waxlog/Tuse)*Waxlog/Tuse
+ExpF = ExpF/max(ExpF)
+ind  = where(Expf GE 1e-5)
+ExpF = ExpF(ind)
+WaxF = WaxLog(ind)
+
+oplot, WaxF*xsep^0, ExpF, col=2
+oplot, WaxF*xsep^1, ExpF, col=2
+oplot, WaxF*xsep^2, ExpF, col=2
+oplot, WaxF*xsep^3, ExpF, col=2
+oplot, WaxF*xsep^4, ExpF, col=2
+oplot, WaxF*xsep^5, ExpF, col=2
+
+xyouts, sqrt(xran(0)*xran(1)), 0.8e-6, 'Energy (keV)', align=0.5
+
+
+; MAKE LOWER AXIS
+ytline = [ypos(0), ypos(0)*dyt]
+!p.charsize=0.65
+
+FOR i=0, 5 do BEGIN & $
+  xline = xlran * (Xsep^i) & $
+  oplot, xline, ypos & $
+
+  for j=0, n_elements(xticks)-1 do $
+    oplot, xticks(j)*(xsep^i)*[1.0, 1.0], ytline & $
+
+  for j=0, n_elements(xticks)-1 do $
+    xyouts, xticks(j)*(xsep^i), ynameloc, xtickname(j), align=0.5 & $
+ENDFOR
+
+xyouts, 8e3*xsep^0, 3.0, 'Positive X', align=0.5
+xyouts, 8e3*xsep^1, 3.0, 'Negative X', align=0.5
+xyouts, 8e3*xsep^2, 3.0, 'Positive Y', align=0.5
+xyouts, 8e3*xsep^3, 3.0, 'Negative Y', align=0.5
+xyouts, 8e3*xsep^4, 3.0, 'Positive Z', align=0.5
+xyouts, 8e3*xsep^5, 3.0, 'Negative Z', align=0.5
+
+yloc = 0.2e-3
+skip = 0.4
+xyouts, 80.0, yloc, 'Blue Lines:'
+xyouts, 80.0, yloc*skip, '4 keV'
+xyouts, 80.0, yloc*skip*skip, 'Maxwellian'
+
+;xyouts, 30.0*Xsep*Xsep*Xsep, yloc*skip, 'Turbulent'
+;xyouts, 30.0*Xsep*Xsep*Xsep, yloc*skip*skip, 'Acceleration'
+
+;oplot, [200e3*xsep, 500e3], [1.5e-4, 1e-3]
+;oplot, [300.0*xsep*xsep, 500e3*xsep], [2.5e-4, 1e-3]
+;oplot, [6e3*xsep*xsep, 400e3*xSep*Xsep], [1.5e-4, 1e-3]
+
+pclose
+!p.charsize=1.25
+
+
+
+; OLD
+
+yloc = 1e-3
+skip = 0.3
+xyouts, 30.0*Xsep, yloc, 'Energization'
+xyouts, 30.0*Xsep, yloc*skip, 'From Ion Jet'
+;xyouts, 100.0*Xsep, yloc*skip*skip, 'Maxwellian'
+
+oplot, [90.0*xsep, 1e5], [3e-3, 3e-2] 
+oplot, [0.9e4*xsep, 5e4*xSep], [3e-3, 3e-2] 
+
+yloc = 1e-3
+skip = 0.3
+xyouts, 30.0*Xsep*Xsep, yloc, 'Speiser-Like'
+xyouts, 30.0*Xsep*xsep, yloc*skip, 'Energization'
+oplot, [1e4*xsep*xsep, 4e4*xSep*Xsep], [3e-3, 3e-2] 
+
+
+
+
+
+
+
+
+
+
+
+
+

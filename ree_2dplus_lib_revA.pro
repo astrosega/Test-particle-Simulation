@@ -242,7 +242,7 @@ end
 
 ; %%%%%%%%%%%%%%%%%%%%%%%%% INJECT PARTICLES 3D %%%%%%%%%%%%%%%%%%%%%%%%%%
 pro inject_particles3D, nnew, npart, i, jt=jt, x=x, y=y, z=z, px=px, py=py, pz=pz, $
-  gam=gam, dsE=dsE, dsB=dsB, Inj_str=Inj_str
+  gam=gam, dsE=dsE, dsB=dsB, Inj_str=Inj_str, indnew = indnew
 
   ; GENERATE INDOPEN
   ;if keyword_set(max) then begin

@@ -226,13 +226,13 @@ end
 
 function ddsega_plot_trajectory, trajectories, number, box_str, xy=xy, xz=xz, yz=yz, ddd = ddd, vx = vx, vy = vy, vz = vz, fields = fields
 
-;Plots the trakectories produced by a modefied version of run_2dplus05A.pro
+;
+
+;Plots the trajectories produced my a modefied version of run_2dplus05A.pro
 ;It cleans up the arrays where the trajectories are allocated
 
-;Examples:
-;
-;ddsega_plot_trajectory(trajectories,1,box_str,xy=1)
-;ddsega_plot_trajectory(trajectories,55,box_str,xy=1,fields=1)
+;EXAMPLE:
+
 
 !p.multi = [0,1,1]
 ;UNPACK BOX STRUCTURE
@@ -246,28 +246,45 @@ zexitmax = box_str.zexitmax
 yexitmin = box_str.yexitmin
 yexitmax = box_str.yexitmax
 
-goodx = where(trajectories[*, 0, number] NE 0)
-goody = where(trajectories[*, 1, number] NE 0)
-goodz = where(trajectories[*, 2, number] NE 900)
+goodx = where(trajectories[*, 3, number] NE 0)
+goody = where(trajectories[*, 4, number] NE 0)
+goodz = where(trajectories[*, 5, number] NE 0)
 
 dpx = trajectories[goodx,3,number]-shift(trajectories[goodx,3,number],1)
 fin = where(dpx eq 0)
 fin = fin[1]
 
+;fin=-1
+ini=10
 
-x = trajectories[goodx[0:fin], 0, number]
-y = trajectories[goody[0:fin], 1, number]
-z = trajectories[goodz[0:fin], 2, number]
-px = trajectories[goodx[0:fin], 3, number]
-py = trajectories[goody[0:fin], 4, number]
-pz = trajectories[goodz[0:fin], 5, number]
 
-Ex = trajectories[goodx[0:fin], 6, number]
-Ey = trajectories[goody[0:fin], 7, number]
-Ez = trajectories[goodz[0:fin], 8, number]
-Bx = trajectories[goodx[0:fin], 9, number]
-By = trajectories[goody[0:fin], 10, number]
-Bz = trajectories[goodz[0:fin], 11, number]
+x = trajectories[goodx[ini:fin], 0, number]
+y = trajectories[goody[ini:fin], 1, number]
+z = trajectories[goodz[ini:fin], 2, number]
+px = trajectories[goodx[ini:fin], 3, number]
+py = trajectories[goody[ini:fin], 4, number]
+pz = trajectories[goodz[ini:fin], 5, number]
+
+Ex = trajectories[goodx[ini:fin], 6, number]
+Ey = trajectories[goody[ini:fin], 7, number]
+Ez = trajectories[goodz[ini:fin], 8, number]
+Bx = trajectories[goodx[ini:fin], 9, number]
+By = trajectories[goody[ini:fin], 10, number]
+Bz = trajectories[goodz[ini:fin], 11, number]
+
+;x = trajectories[goodx[ini]:-1, 0, number]
+;y = trajectories[goody[ini]:-1, 1, number]
+;z = trajectories[goodz[ini]:-1, 2, number]
+;px = trajectories[goodx[ini]:-1, 3, number]
+;py = trajectories[goody[ini]:-1, 4, number]
+;pz = trajectories[goodz[ini]:-1, 5, number]
+
+;Ex = trajectories[goodx[ini]:-1, 6, number]
+;Ey = trajectories[goody[ini]:-1, 7, number]
+;Ez = trajectories[goodz[ini]:-1, 8, number]
+;Bx = trajectories[goodx[ini]:-1, 9, number]
+;By = trajectories[goody[ini]:-1, 10, number]
+;Bz = trajectories[goodz[ini]:-1, 11, number]
 
 wi,1
 if keyword_set(xy) then begin
@@ -320,22 +337,22 @@ if keyword_set(vz) then begin
 endif
 
 if keyword_set(fields) then begin
-  wi, 2, wsize = [1500,1200]
+  wi, 2,wsize = [1320,720]
   
   !P.MULTI=[0,1,3]
 
   
-   plot, px, charsize = 3.5, yrange = [-8e6, 8e6] ,thick = 2
-  oplot, py, color=cgcolor('green'),thick = 2
-  oplot, pz, color=cgcolor('blue'),thick = 2
+   cgplot, (px^2 + py^2 + pz^2)/2., charsize = 3.5, yrange = [-8e12, 8e12] ,thick = 2
+  ;oplot, py, color=cgcolor('green'),thick = 2
+  ;oplot, pz, color=cgcolor('blue'),thick = 2
   
-  cgplot, Ex, nsum=50, thick = 2, charsize = 3.5, yrange = [-30, 30]
-  oplot, Ey, nsum=50, color=cgcolor('green'), thick = 2
-  oplot, Ez, nsum=50, color=cgcolor('blue') ,thick = 2
+  cgplot, sqrt(Ex^2 + Ey^2 + Ez^2), nsum=2, thick = 2, charsize = 3.5, yrange = [-30, 30]
+  ;cgoplot, Ey, nsum=50, color=cgcolor('green'), thick = 2
+  ;cgoplot, Ez, nsum=50, color=cgcolor('blue') ,thick = 2
   
-  plot, Bx, thick =2, charsize = 3.5
-  oplot, By, color=cgcolor('green'), thick =2
-  oplot, Bz, color=cgcolor('blue'), thick =2
+  cgplot, Bx, thick =2, charsize = 3.5
+  cgoplot, By, color=cgcolor('green'), thick =2
+  cgoplot, Bz, color=cgcolor('blue'), thick =2
   ;plot,ex
   
   cgText, 0.988, 0.94, 'px', ALIGNMENT=0.5, /NORMAL, charsize=2.5
@@ -349,6 +366,26 @@ if keyword_set(fields) then begin
   cgText, 0.988, 0.26, 'Bx', ALIGNMENT=0.5, /NORMAL, charsize=2.5
   cgText, 0.988, 0.24, 'By', ALIGNMENT=0.5, /NORMAL, color= cgcolor('green'), charsize=2.5
   cgText, 0.988, 0.22, 'Bz', ALIGNMENT=0.5, /NORMAL, color= cgcolor('blue'), charsize=2.5
+  
+ ; px = trajectories[goodx[0:fin], 3, number]
+ ; py = trajectories[goody[0:fin], 4, number]
+ ; pz = trajectories[goodz[0:fin], 5, number]
+  
+   
+ Energy = px[where(abs(Bz) lt 1e-9)]^2 +   py[where(abs(Bz) lt 1e-9)]^2 +   pz[where(abs(Bz) lt 1e-9)]^2
+ 
+ Energy1 = (px[0]^2 +   py[0]^2 +   pz[0]^2)/2
+ Energy2 = (px[-1]^2 +   py[-1]^2 +   pz[-1]^2)/2
+
+
+;derivative = (energy - shift(Energy,1))/0.01
+;derivative = derivative[2:-1]
+
+;print,energy
+;print,'derivative',derivative
+
+print,'Initial Energy  =',energy1
+print,'Final Energy  =',energy2
 
   
   

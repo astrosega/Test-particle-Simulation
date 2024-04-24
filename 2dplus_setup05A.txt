@@ -80,33 +80,33 @@ DenZ0    = 2*Z0  ; NEEDED TO BALANCE B PRESSURE
 inject_particles3D_setup, ninjarr, vth, DenZ0, DenInjZ, nEtimes, nBtimes, $
    Xmin, Xmax, Ymin, Ymax, Zmin, Zmax, Inj_str=Inj_str
 jt = 0L ; TRACKS POSITION IN PARTICLE INJECTION ARRAYS
-
+;wi,6
 ; TEST HISTROGRAM 
 dz       = (zmax-zmin)/100.0
 zax      = (dindgen(100)-49.5)*dz
 hist = histogram(Inj_str.z, min=zmin, max=zmax*0.9999999999999D, bin = dz)
-plot, zax, hist
+;plot, zax, hist
 DenExtra = ( DenInjZ - 1D/(cosh(Zmax/DenZ0)^2) ) > 0D
 Zinside = zax(1:98)
-plot, Zinside, float(hist(1:98))/max(hist(1:98))
-oplot, Zinside, (DenExtra + (1D - DenExtra)/(cosh(Zinside/DenZ0)^2) ), col=2
+;plot, Zinside, float(hist(1:98))/max(hist(1:98))
+;oplot, Zinside, (DenExtra + (1D - DenExtra)/(cosh(Zinside/DenZ0)^2) ), col=2
 
-
+;wi,0
 ; TEST PRESSURE BALANCE
 ZdistEff = 2D*tanh(Zmax/DenZ0)*DenZ0 ; INTEGRATION OF SECH^2
 thresh = DenExtra*(Zmax-Zmin)/(ZdistEff*(1D - DenExtra) +  DenExtra*(Zmax-Zmin))
 n0 = 0.25d6/(1D - denextra)
 BxTest = B_str.Bx0*tanh(Zinside/B_str.Z0)
 BzTest = B_str.Bz0*tanh(box_str.xmin/B_str.X0)
-plot, Zinside, BxTest
+;plot, Zinside, BxTest
 PressureB = BxTest*Bxtest/(2D*mu0) * 1d9 + BzTest*Bztest/(2D*mu0) * 1d9
 PressureN = n0*TempStart*ee/(cosh(Zinside/Z0)^2) * (1D - denextra) * 1d9 + $
             n0*denextra*TempStart*ee * 1d9
 PressureNs = n0*TempStart*ee*hist(1:98)/max(hist(1:98)) * 1d9
-plot, Zinside, PressureB, yran = [0, 0.3]
-oplot, Zinside, PressureN, col=2
-oplot, Zinside, PressureNs, col=4
-oplot, Zinside, PressureB+PressureNs, col=6
+;plot, Zinside, PressureB, yran = [0, 0.3]
+;oplot, Zinside, PressureN, col=2
+;oplot, Zinside, PressureNs, col=4
+;oplot, Zinside, PressureB+PressureNs, col=6
 
 
 

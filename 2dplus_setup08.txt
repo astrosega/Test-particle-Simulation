@@ -1,0 +1,132 @@
+
+; SET UP BOX
+xmin     = -8.0D*Re ; LOCATION OF INJECTION BOUNDARY (PARTICLE ENTRY)
+xmax     =  8.0D*Re ; 
+xexitmin = -8.0D*Re ; LOCATION PARTICLE EXIT BOUNDARY
+xexitmax =  8.0D*Re
+xturbmin = -7.25D*Re ; LOCATION OF TURBULENCE REGION
+xturbmax =  7.25D*Re
+
+zmin     = -2.0D*Re  ; 
+zmax     =  2.0D*Re
+zexitmin =  zmin
+zexitmax =  zmax
+zturbmin = -1.00D*Re  ; 
+zturbmax =  1.00D*Re
+
+ymin     = -2.0*Re
+ymax     =  2.0*Re
+yexitmin = ymin
+yexitmax = ymax
+yturbmin = -1.25*Re
+yturbmax =  1.25*Re
+
+; BOX STRUCTURE CONTAINS NEEDED INFORMATION OF THE BOX
+box_str = {xmin:xmin, xmax:xmax, xexitmin:xexitmin, xexitmax:xexitmax, $
+           xturbmin:xturbmin, xturbmax:xturbmax, zmin:zmin, zmax:zmax, $
+           zexitmin:zexitmin, zexitmax:zexitmax, zturbmin:zturbmin, $
+           zturbmax:zturbmax, ymin:ymin, ymax:ymax, yexitmin:yexitmin, $
+           yexitmax:yexitmax, yturbmin:yturbmin, yturbmax:yturbmax}
+           
+; ION SKIN DEPTH
+wpi = 2D*!dpi*sqrt(0.05)*9000D/44D
+di  = c/wpi
+
+; SET UP TURBULENCE REGION
+Pdx   = 0.25D*Re; 0.40*Re; 0.5*Re;
+
+
+; SET UP MAGNETIC FIELD
+Bx0 = 20d-9
+Bz0 = 2.0d-9
+X0 =  8D*di    ; ABOUT 1.64 RE	         
+Z0  = 1.00*di	; ABOUT 0.164 RE				
+
+;  PUT IN A MAGNETIC HOLE NOT ACTIVATED HERE
+zH0 = Re
+zHW = Re/4
+xHW = Re*2.5
+;BH0 = 16D-9
+BH0 = 0D-9 ; NO MAGNTIC HOLE
+
+B_str = {Bx0:Bx0, By0:0D, Bz0:Bz0, X0:X0, Y0:0D, Z0:Z0, $
+         BH0:BH0, xHw:xHw, zHw:zHw, zH0:zH0}
+
+; ELECTROMAGNETIC
+fmin   = 0.005D
+fmax   = 50D
+fbreak = 0.25D
+nfreqs = 100L
+alpha1 = 1.65D
+alpha2 = 2.6D
+Vmin   = 500D3
+Vmax   = 2500D3
+CorPer = 1.5D
+EplRat = 0.025D
+Brms   = 8.1D
+db_set, fmin, fmax, fbreak, nfreqs, alpha1, alpha2, Vmin, Vmax, CorPer, $
+    EplRat, Brms, dBgStr=dBgStr, /useformula
+
+; ELECTROSTATIC E FIELD
+alpha1 = 1.1D
+alpha2 = 0.8D
+EplRat = 0.025D
+CorPer = 2.5D
+Erms   = 18.0D
+Vmin   = 100D3
+Vmax   = 500D3
+de_set, fmin, fmax, fbreak, nfreqs, alpha1, alpha2, Vmin, Vmax, CorPer, $
+    EplRat, Erms, dEeStr=dEeStr, /useformula
+
+; ADD PARALEL STRUCTURE
+alpha1 = 0.5D
+alpha2 = 0.40D
+CorPer = 2.5D
+EplRat = 40D
+Erms = 5.5D
+de_set, fmin, fmax, fbreak, nfreqs, alpha1, alpha2, Vmin, Vmax, CorPer, $
+    EplRat, Erms, dEeStr=dEeStrP, /useformula
+
+it  = 0L ; TRACKS POSITION IN ELECTRIC FIELD ARRAYS
+
+; SET UP PARTICLE INJECTION - VARIES WITH Z  
+ninjarr  = 500000L
+DenInjZ  = 0.25D ; ESTABLISH A BACKGROUND DENSITY AT Zmax & Zmin
+DenZ0    = 1*Z0  ; NEEDED TO BALANCE B PRESSURE
+
+; PRE-MAKE INJECTION ARRAYS
+nEtimes = 100000L
+nBtimes = 100000L
+inject_particles3D_setup, ninjarr, vth, DenZ0, DenInjZ, nEtimes, nBtimes, $
+   Xmin, Xmax, Ymin, Ymax, Zmin, Zmax, Inj_str=Inj_str
+jt = 0L ; TRACKS POSITION IN PARTICLE INJECTION ARRAYS
+
+; TEST HISTROGRAM 
+dz       = (zmax-zmin)/100.0
+zax      = (dindgen(100)-49.5)*dz
+hist = histogram(Inj_str.z, min=zmin, max=zmax*0.9999999999999D, bin = dz)
+plot, zax, hist
+DenExtra = ( DenInjZ - 1D/(cosh(Zmax/DenZ0)^2) ) > 0D
+Zinside = zax(1:98)
+plot, Zinside, float(hist(1:98))/max(hist(1:98))
+oplot, Zinside, (DenExtra + (1D - DenExtra)/(cosh(Zinside/DenZ0)^2) ), col=2
+
+
+; TEST PRESSURE BALANCE
+ZdistEff = 2D*tanh(Zmax/DenZ0)*DenZ0 ; INTEGRATION OF SECH^2
+thresh = DenExtra*(Zmax-Zmin)/(ZdistEff*(1D - DenExtra) +  DenExtra*(Zmax-Zmin))
+n0 = 0.25d6/(1D - denextra)
+BxTest = B_str.Bx0*tanh(Zinside/B_str.Z0)
+BzTest = B_str.Bz0*tanh(box_str.xmin/B_str.X0)
+plot, Zinside, BxTest
+PressureB = BxTest*Bxtest/(2D*mu0) * 1d9 + BzTest*Bztest/(2D*mu0) * 1d9
+PressureN = n0*TempStart*ee/(cosh(Zinside/Z0)^2) * (1D - denextra) * 1d9 + $
+            n0*denextra*TempStart*ee * 1d9
+PressureNs = n0*TempStart*ee*hist(1:98)/max(hist(1:98)) * 1d9
+plot, Zinside, PressureB, yran = [0, 0.3]
+oplot, Zinside, PressureN, col=2
+oplot, Zinside, PressureNs, col=4
+oplot, Zinside, PressureB+PressureNs, col=6
+oplot, Zinside, PressureB+PressureN, col=1
+
+

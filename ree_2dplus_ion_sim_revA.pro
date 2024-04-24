@@ -8,7 +8,7 @@ pro ree_2dplus_ion_sim, dt, it, jt, kt, npart, imax, nnew, nh, box_str, $
   pxn, pyn, pzn, pxold, pyold, pzold, gam, rat, plot_step, plot_mod, $
   Xpwr, Ypwr, Zpwr, psym, vth, Pdx, ind=ind, yplotrange = yplotrange, radiation=radiation, $ 
   maskzero=maskzero, zerocount=zerocount, mz3=mz3, mz4=mz4, maskleave = maskleave, wpi=wpi, $
-  import_index = import_index, trajectories=trajectories, highp = highp
+  import_index = import_index, trajectories=trajectories, highp = highp, maskhot = maskhot, masklowp = masklowp, vinicial=vinicial, track = track, temps=temps
   
 ; NATURAL NUMBERS
 ee    = 1.6d-19
@@ -66,10 +66,12 @@ Z0  = B_str.Z0
 ;ztraj1 = MAKE_ARRAY(imax+1)
 
 ;MAKKE ARRAY TO RECORD IMPORTANT PARTICLES
-
+steps = 100
 if keyword_set(import_index) then begin
-  restore, 'import_index1.sav'
-  trajectories = make_array(imax+1, 12, n_elements(import_index)) 
+  restore, 'import_indext.sav'
+  trajectories = temporary(make_array(imax/30 + 1, 12, n_elements(import_index)))
+  ;vinicial = make_array(3, n_elements(import_index))
+  track = 1
  endif
  
  ;;;;; INITIALIZE THE FLUX STRUCTURE TO RECORD THE FLUX OF THE LEAVING PARTICLES
@@ -85,9 +87,13 @@ leave_px  = dblarr(nleave)
 leave_py  = dblarr(nleave)
 leave_pz  = dblarr(nleave)
 
+;maskhot   = boolarr(npart)
+
 maskleave = boolarr(npart)
-maskLowBz = boolarr(npart)
+;maskLowBz = boolarr(npart)
 maskzero = boolarr(npart)
+;masklowp = boolarr(npart)
+
 mz2 = boolarr(npart)
 mz3 = boolarr(npart)
 mz4 = boolarr(npart)
@@ -98,7 +104,7 @@ ileave = 0l
 iz = 0
 ; MAIN LOOP
 
-FOR i = 0L, imax do BEGIN & $
+FOR i = 0d, imax do BEGIN & $
 
   ; REMOVE OUT OF BOUNDARY PARTICLES. GAM=0 INDICATES NO PARTICLE
   indbad = where( (x[ind] LT xexitmin) OR (x[ind] GT xexitmax) OR $
@@ -133,53 +139,48 @@ FOR i = 0L, imax do BEGIN & $
       
       
   
+   if i gt 20000 then begin
+    nnew = 1
+;    print,'yes'
+    endif
   ;INJECT PARTICLES ADDS PARTICLES AT BOUNDARIES
   inject_particles3D, nnew, npart, i, jt=jt, x=x, y=y, z=z, px=px, py=py, pz=pz, $
-    gam=gam, dsE=dsE, dsB=dsB, Inj_str=Inj_str
-  ind = where(gam NE 0D, nind)
+    gam=gam, dsE=dsE, dsB=dsB, Inj_str=Inj_str, indnew = indnew
+    
+    ind = where(gam NE 0D, nind)  ;indbad was removed
+  ;  print,'indnew =',py[indnew]
 
 ;RECORD TRAYECTORIES FOR LYAPUNOV EXPONENT CALCULATION
 ;
 
-If keyword_set(track) then begin
-        if i EQ 0 then begin
-          ci = ind[1]
-          cj = ind[0]
-        endif
-    
-    
-    if (indbad ne -1) then print, 'something left'
-    
-    trajectories = make_array(imax)
-    
-    if  ((x[ci] LT xexitmin) OR (x[ci] GT xexitmax) OR $
-        (y[ci] LT yexitmin) OR (y[ci] GT yexitmax) OR $
-        (z[ci] LT zexitmin) OR (z[ci] GT zexitmax) and (flag eq 0)) then begin
-      print,'tracked particle left'
-      remove, where(0 eq xtraj1), xtraj1
-      remove, where(0 eq ytraj1), ytraj1
-      remove, where(0 eq ztraj1), ztraj1
-      flag = 1
-    endif else if (flag eq 0) then begin
-      xtraj1[i] = x[ci]
-      ytraj1[i] = y[ci]
-      ztraj1[i] = z[ci]
-    endif
-endif
+if track eq 0 and keyword_set(import_index) then begin
+match, indnew, import_index,suba,subb
+if n_elements(subb) gt 0 then begin
+  vinicial[0, subb]  = px[import_index[subb]]
+  vinicial[1, subb]  = py[import_index[subb]]
+  vinicial[2, subb]  = pz[import_index[subb]]
+ endif
+  endif
+   
 
-if keyword_set(import_index) then begin
-  trajectories[i, 0, *]  = x[import_index] 
-  trajectories[i, 1, *]  = y[import_index]
-  trajectories[i, 2, *]  = z[import_index]
-  trajectories[i, 3, *]  = px[import_index]
-  trajectories[i, 4, *]  = py[import_index]
-  trajectories[i, 5, *]  = pz[import_index]
-  trajectories[i, 6, *]  = Ex[import_index]
-  trajectories[i, 7, *]  = Ey[import_index]
-  trajectories[i, 8, *]  = Ez[import_index]
-  trajectories[i, 9, *]  = Bx[import_index] + dBx[import_index]
-  trajectories[i, 10, *] = By[import_index] + dBy[import_index]
-  trajectories[i, 11, *] = Bz[import_index] + dBz[import_index]
+if keyword_set(import_index) and track and i mod steps eq 0 then begin
+  trajectories[uint(i/steps), 0, *]  = x[import_index] 
+  trajectories[uint(i/steps), 1, *]  = y[import_index]
+  trajectories[uint(i/steps), 2, *]  = z[import_index]
+  trajectories[uint(i/steps), 3, *]  = px[import_index]
+  trajectories[uint(i/steps), 4, *]  = py[import_index]
+  trajectories[uint(i/steps), 5, *]  = pz[import_index]
+  trajectories[uint(i/steps), 6, *]  = Ex[import_index]
+  trajectories[uint(i/steps), 7, *]  = Ey[import_index]
+  trajectories[uint(i/steps), 8, *]  = Ez[import_index]
+  trajectories[uint(i/steps), 9, *]  = Bx[import_index] + dBx[import_index]
+  trajectories[uint(i/steps), 10, *] = By[import_index] + dBy[import_index]
+  trajectories[uint(i/steps), 11, *] = Bz[import_index] + dBz[import_index]
+ ; if i lt 1 then begin 
+ ;   HighMaxBoltz = where(trajectories[1, 3, *]^2+trajectories[1, 4, *]^2+trajectories[1, 5, *]^2 gt $
+ ;     mean(trajectories[1, 3, *]^2+trajectories[1, 4, *]^2+trajectories[1, 5, *]^2 ))
+ ;     maskhot[HighMaxBoltz] = 1
+ ;     endif
 ;  print,z[import_index]
  ;print,ex[import_index]
 endif
@@ -188,30 +189,44 @@ endif
   
   ;Isolate the faster particles
   
-  highp1 =  ind[where(py[ind] GT 2*mean(abs(py[ind])))]
-  LowBz =   ind[where(abs(Bz[ind]) LT 1e-11, nlowBz)] ;this doesn't remember what had lobB
+  highp1 =  ind[where(abs(py[ind]) GT 2*mean(abs(py[ind])))]
+ ;  lowp1 =  indnew[where(py[indnew]^2 + px[indnew]^2 + pz[indnew]^2 lT .67*mean(py[ind]^2 +px[ind]^2+pz[ind]^2),n)]
+ ;  if n gt 0 then masklowp[lowp1] = 1
+ ;  lowp1 =  indnew[where(py[indnew]^2 + px[indnew]^2 + pz[indnew]^2 gT  2*mean(py[ind]^2 +px[ind]^2+pz[ind]^2),n)]
+ ;  if n gt 0 then maskhot[lowp1] = 1
+ ;  
+ ;  lowp1 =  indnew[where(py[indnew]^2 + px[indnew]^2 + pz[indnew]^2 lT .67*vth^2)]
+ ;  if n gt 0 then masklowp[lowp1] = 1
+ ;  lowp1 =  indnew[where(py[indnew]^2 + px[indnew]^2 + pz[indnew]^2 gT  2*vth^2)]
+ ;  if n gt 0 then maskhot[lowp1] = 1
+temps[i] = (mean(px[ind]^2*mi/ee)+mean(px[ind]^2*mi/ee)+mean(py[ind]^2*mi/ee))*.5
+   
+  ;LowBz =   ind[where(abs(Bz[ind]) LT 1e-11, nlowBz)] ;this doesn't remember what had lobB
   
-  masklowbz[ind[[where(abs(Bz[ind]) LT 1e-11 and gam ne 0, nlowBz)]]] = 1
+  ;masklowbz[ind[[where(abs(Bz[ind]) LT 1e-11 and gam ne 0, nlowBz)]]] = 1
   ;highp[ind[where(py[ind] GT 3*mean(abs(py[ind])))]] = 1
   ;
-  ;
+  
+  if indbad[0] ne -1 then begin
   match,ind[indbad],highp1,suba, subb
   ind2=ind[indbad]
   highp[ind2[suba]] = 1
-  if (suba[0] ne -1) then begin
- ; print, 'High velocity particles', ind[indbad[suba]], 'have left at i=', i
-  highleave+= n_elements(suba)
-  endif
   
-   highpleave_ind = ind2[suba]
-   match, highpleave_ind, LowBz,suba, subb ;see which particles that have had lowBw leave with highp
-   if suba[0] ne -1 then lowbz_highpleave += n_elements(subb)
-   
-   match,ind[indbad],where(masklowbz),suba, subb
-   if (suba[0] ne -1) then begin
-     ; print, 'High velocity particles', ind[indbad[suba]], 'have left at i=', i
-     LowBleave+= n_elements(suba)
+ ; match,ind[indbad],where(masklowbz),suba, subb
+ ; if (suba[0] ne -1) then begin
+ ;   ; print, 'High velocity particles', ind[indbad[suba]], 'have left at i=', i
+ ;   LowBleave+= n_elements(suba)
+ ; endif
+  
+  ; highpleave_ind = ind2[suba]
+ ;  match, highpleave_ind, LowBz,suba, subb ;see which particles that have had lowBw leave with highp
+  ;   if keyword_set(suba) then begin
+  ; if suba[0] ne -1 then lowbz_highpleave += n_elements(subb)
    endif
+  ; endif
+   
+
+   
    
 
   
@@ -276,19 +291,19 @@ radiation[*,4] = leave_py;[0:ileave -1]
 radiation[*,5] = leave_pz;[0:ileave -1]
 
 
-print, 'Probability of a left particles being high velocity', float(highleave)/float(ileave)
+;print, 'Probability of a left particles being high velocity', float(highleave)/float(ileave)
 
-junk = where(px[ind] GT 2*mean(abs(px[ind])), nhigh)
+;junk = where(px[ind] GT 2*mean(abs(px[ind])), nhigh)
 
-junk = where(gam ne 0, particlespresent)
+;junk = where(gam ne 0, particlespresent)
 
-print, 'Frequency of high velocity particles', float(nhigh)/particlespresent
+;print, 'Frequency of high velocity particles', float(nhigh)/particlespresent
 
-print, 'Probabiliy of a left particle being LowBz', float(lowbleave)/ileave
+;print, 'Probabiliy of a left particle being LowBz', float(lowbleave)/ileave
 
-junk = where(gam ne 0 and maskLowBz, nLowBzpresent)
+;junk = where(gam ne 0 and maskLowBz, nLowBzpresent)
 
-print, 'Frequency of LowBz particles', float(nLowBzpresent)/float(particlespresent)
+;print, 'Frequency of LowBz particles', float(nLowBzpresent)/float(particlespresent)
 
 
 RETURN
